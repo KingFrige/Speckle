@@ -157,8 +157,8 @@ if [ "$runFlag" = true ]; then
       for input in "${commands[@]}"; do
          if [[ ${input:0:1} != '#' ]]; then # allow us to comment out lines in the cmd files
             echo "~~~Running ${b}"
-            echo "  ${RUN} ${SHORT_EXE}_base.${CONFIG} ${input}"
-            eval ${RUN} ${SHORT_EXE}_base.${CONFIG} ${input}
+            echo "  ${RUN} ./${SHORT_EXE}_base.${CONFIG} ${input}"
+            eval ${RUN} ./${SHORT_EXE}_base.${CONFIG} ${input}
          fi
       done
    
