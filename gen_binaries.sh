@@ -13,12 +13,14 @@ fi
 
 CONFIG=riscv
 CONFIGFILE=${CONFIG}.cfg
-RUN="spike pk -c "
+RUN="/home/korben/riscv/riscv/riscv-isa-sim/build/spike /home/korben/riscv/riscv/riscv-pk/build/pk "
 CMD_FILE=commands.txt
 INPUT_TYPE=test
+SUITE_TYPE=int
 
 # the integer set
-BENCHMARKS=(400.perlbench 401.bzip2 403.gcc 429.mcf 445.gobmk 456.hmmer 458.sjeng 462.libquantum 464.h264ref 471.omnetpp 473.astar 483.xalancbmk)
+INTBENCHMARKS=(400.perlbench 401.bzip2 403.gcc 429.mcf 445.gobmk 456.hmmer 458.sjeng 462.libquantum 464.h264ref 471.omnetpp 473.astar 483.xalancbmk)
+FPBENCHMARKS=(410.bwaves 416.gamess 433.milc 434.zeusmp 435.gromacs 436.cactusADM 437.leslie3d 444.namd 447.dealII 450.soplex 453.povray 454.calculix 459.GemsFDTD 465.tonto 470.lbm 481.wrf 482.sphinx3)
 
 # idiomatic parameter and option handling in sh
 compileFlag=false
@@ -36,6 +38,10 @@ do
         --copy)
             copyFlag=true
             ;;
+        --fp)
+            fpFlag=true
+            SUITE_TYPE=fp
+            ;;
         --*) echo "ERROR: bad option $1"
             echo "  --compile (compile the SPEC benchmarks), --run (to run the benchmarks) --copy (copies, not symlinks, benchmarks to a new dir)"
             exit 1
@@ -48,17 +54,23 @@ do
     shift
 done
 
+if [ "$fpFlag" = true ]; then
+  BENCHMARKS=(${FPBENCHMARKS[@]})
+else
+  BENCHMARKS=(${INTBENCHMARKS[@]})
+fi
+
 echo "== Speckle Options =="
 echo "  Config : " ${CONFIG}
 echo "  Input  : " ${INPUT_TYPE}
 echo "  compile: " $compileFlag
 echo "  run    : " $runFlag
 echo "  copy   : " $copyFlag
+echo "  fp     : " $fpFlag
 echo ""
 
-
 BUILD_DIR=$PWD/build
-COPY_DIR=$PWD/${CONFIG}-spec-${INPUT_TYPE}
+COPY_DIR=$PWD/${CONFIG}-spec-${SUITE_TYPE}-${INPUT_TYPE}
 mkdir -p build;
 
 # compile the binaries
@@ -66,8 +78,11 @@ if [ "$compileFlag" = true ]; then
    echo "Compiling SPEC..."
    # copy over the config file we will use to compile the benchmarks
    cp $BUILD_DIR/../${CONFIGFILE} $SPEC_DIR/config/${CONFIGFILE}
-   cd $SPEC_DIR; . ./shrc; time runspec --config ${CONFIG} --size ${INPUT_TYPE} --action setup int
-#   cd $SPEC_DIR; . ./shrc; time runspec --config ${CONFIG} --size ${INPUT_TYPE} --action scrub int
+   if [ "$fpFlag" = true ]; then
+     cd $SPEC_DIR; . ./shrc; time runspec --config ${CONFIG} --size ${INPUT_TYPE} --action setup fp
+   else
+     cd $SPEC_DIR; . ./shrc; time runspec --config ${CONFIG} --size ${INPUT_TYPE} --action setup int
+   fi
 
    if [ "$copyFlag" = true ]; then
       rm -rf $COPY_DIR
@@ -103,7 +118,13 @@ if [ "$compileFlag" = true ]; then
          echo "---- copying benchmarks ----- "
          mkdir -p $COPY_DIR/$b
          cp -r $BUILD_DIR/../commands $COPY_DIR/commands
-         cp $BUILD_DIR/../run.sh $COPY_DIR/run.sh
+
+         if [ "$SUITE_TYPE" = "fp" ]; then
+           cp $BUILD_DIR/../run_fp.sh $COPY_DIR/run.sh
+         else
+           cp $BUILD_DIR/../run_int.sh $COPY_DIR/run.sh
+         fi
+
          sed -i '4s/.*/INPUT_TYPE='${INPUT_TYPE}' #this line was auto-generated from gen_binaries.sh/' $COPY_DIR/run.sh
          for f in $BMK_DIR/*; do
             echo $f

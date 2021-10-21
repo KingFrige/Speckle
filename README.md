@@ -61,6 +61,8 @@
    Modify the generated "./${CONFIG}-spec-{$INPUT}/run.sh" script as required to 
    run the binaries in your new environment.  
 
+**fp suite**
+         ./gen_binaries.sh --compile --copy --fp
 
 **TODO**
    
