@@ -26,6 +26,7 @@ FPBENCHMARKS=(410.bwaves 416.gamess 433.milc 434.zeusmp 435.gromacs 436.cactusAD
 compileFlag=false
 runFlag=false
 copyFlag=false
+fpFlag=false
 while test $# -gt 0
 do
    case "$1" in
