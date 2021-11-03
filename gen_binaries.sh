@@ -24,18 +24,23 @@ REDIRECT=false
 # CML arguments
 # idiomatic parameter and option handling in sh
 compileFlag=false
-genCommandsFlag=false
+genCommandsFlag=true
 
 # intrate, fprate, intspeed, fpspeed
 # Supersets spec{speed,rate}, and all, are not supported
-suite_type=intspeed
+suite_type=int
+
+# rate/speed
+rate_value=0
+
+run_type=${suite_type}speed
 
 # ref, train, test
 input_type=ref
 
 function usage
 {
-    echo "usage: gen_binaries.sh [--compile | --genCommands] [-H | -h | --help] [--suite [intspeed | intrate | fpspeed | fprate] | --input [train | test | ref]]"
+    echo "usage: gen_binaries.sh [--compile | --genCommands] [-H | -h | --help] [--suite [int | fp] | --input [train | test | ref] | --rate num]"
 }
 
 while test $# -gt 0
@@ -50,6 +55,10 @@ do
         --suite)
             shift;
             suite_type=$1
+            ;;
+        --rate)
+            shift;
+            rate_value=$1
             ;;
         --input)
             shift;
@@ -71,59 +80,56 @@ do
     shift
 done
 
+if [ ${rate_value} -gt 0 ]; then
+  run_type=${suite_type}rate
+fi
+
 echo "== Speckle Options =="
 echo "  Config : " ${CONFIG}
 echo "  Suite  : " ${suite_type}
+echo "  rate   : " ${rate_value}
+echo "  run    : " ${run_type}
 echo "  Input  : " ${input_type}
 echo "  compile: " $compileFlag
 echo "  genCmd : " $genCommandsFlag
 echo ""
 
-
 # Directory into which speckle will dump logs and the overlay
 build_dir=$PWD/build
 overlay_dir=$build_dir/overlay
 
-if [[ $suite_type == *"speed"* ]]; then
-   prefix="6"
-   class="speed"
-   suffix="_s"
-else
-   prefix="5"
-   class="rate"
-   suffix="_r"
-fi
+benchmarks=(400.perlbench 401.bzip2 403.gcc 429.mcf 445.gobmk 456.hmmer 458.sjeng 462.libquantum 464.h264ref 471.omnetpp 473.astar 483.xalancbmk 999.specrand)
 
-benchmarks=$(basename -s .${input_type}.cmd --multiple $(pwd)/commands/${suite_type}/*."${input_type}".cmd)
+# benchmarks=$(basename -s .${input_type}.cmd --multiple $(pwd)/commands/*."${input_type}".cmd)
 mkdir -p build;
 
 # compile the binaries
 if [ "$compileFlag" = true ]; then
    echo "Compiling SPEC..."
    # TODO: deal with scrubbing properly
-   #cd $SPEC_DIR; . ./shrc; time runcpu --config ${CONFIG} --action scrub ${suite_type}
+   #cd $SPEC_DIR; . ./shrc; time runspec --config ${CONFIG} --action scrub ${suite_type}
 
    # copy over the config file we will use to compile the benchmarks
    cp $build_dir/../${CONFIGFILE} $SPEC_DIR/config
    cp $build_dir/../${H_CONFIGFILE} $SPEC_DIR/config
    echo "Compiling target SPEC with config: ${CONFIGFILE}"
-   cd $SPEC_DIR; . ./shrc; time runcpu --verbose 10 --config ${CONFIG} --size ${input_type} \
-      --action build ${suite_type} > ${build_dir}/${CONFIG}-${suite_type}-build.log
+   cd $SPEC_DIR; . ./shrc; time runspec --verbose 10 --config ${CONFIG} --size ${input_type} \
+      --action build --rate ${rate_value} ${suite_type} > ${build_dir}/${CONFIG}-${run_type}-build.log
    echo "Compiling host SPEC and generating inputs with config: ${H_CONFIGFILE}"
-   cd $SPEC_DIR; . ./shrc; time runcpu --verbose 10 --config ${H_CONFIG} --size ${input_type} \
-      --action runsetup ${suite_type} > ${build_dir}/${H_CONFIG}-${suite_type}-build.log
+   cd $SPEC_DIR; . ./shrc; time runspec --verbose 10 --config ${H_CONFIG} --size ${input_type} \
+      --action runsetup --rate ${rate_value} ${suite_type} > ${build_dir}/${H_CONFIG}-${run_type}-build.log
 
    for b in ${benchmarks[@]}; do
-      output_dir=${overlay_dir}/${suite_type}/${input_type}/$b
+      output_dir=${overlay_dir}/${run_type}/${input_type}/$b
       mkdir -p $output_dir
-      bmark_base_dir=$SPEC_DIR/benchspec/CPU/$b
+      bmark_base_dir=$SPEC_DIR/benchspec/CPU2006/$b
       unprefixed=${b:4}
-      b_short_name=${unprefixed/%_[sr]/}
+      b_short_name=${unprefixed}
 
       if [[ "${input_type}" == "ref" ]]; then
-         host_bmk_dir=${bmark_base_dir}/run/run_base_ref${class}_${H_CONFIG}-m64.0000;
+         host_bmk_dir=${bmark_base_dir}/run/run_base_ref_${H_CONFIG}.0000;
       else
-         host_bmk_dir=${bmark_base_dir}/run/run_base_${input_type}_${H_CONFIG}-m64.0000;
+         host_bmk_dir=${bmark_base_dir}/run/run_base_${input_type}_${H_CONFIG}.0000;
       fi
 
       # Copy the inputs from the host build
@@ -133,10 +139,10 @@ if [ "$compileFlag" = true ]; then
          cp -rf $input -T $output_dir/$(basename "$input")
       done
 
-      if [[ $b == "523.xalancbmk_r" ]]; then
-         target_bin=`find $bmark_base_dir/exe/ -name "cpuxalan*${CONFIG}-64"`
+      if [[ $b == "483.xalancbmk" ]]; then
+        target_bin=`find $bmark_base_dir/exe/ -name "Xalan*${CONFIG}"`
       else
-         target_bin=`find $bmark_base_dir/exe/ -name "*${b_short_name}*${CONFIG}-64"`
+        target_bin=`find $bmark_base_dir/exe/ -name "*${b_short_name}*${CONFIG}"`
       fi
       cp -f ${target_bin} $output_dir/
 
@@ -145,7 +151,7 @@ if [ "$compileFlag" = true ]; then
       echo "#!/bin/bash" > ${run_script}
       echo "#This script was generated by Speckle gen_binaries.sh" >> ${run_script}
 
-      IFS=$'\n' read -d '' -r -a commands < $build_dir/../commands/$suite_type/${b}.${input_type}.cmd || [ "${commands[0]}" ]
+      IFS=$'\n' read -d '' -r -a commands < $build_dir/../commands/${b}.${input_type}.cmd || [ "${commands[0]}" ]
       workload_idx=0
       for input in "${commands[@]}"; do
          if [[ ${input:0:1} != '#' ]]; then # allow us to comment out lines in the cmd files
@@ -167,7 +173,7 @@ if [ "$compileFlag" = true ]; then
       chmod +x $run_script
    done
    # Copy the master runscript into the overlay directory
-   cp ${build_dir}/../spec17-run-scripts/${suite_type}.sh ${overlay_dir}/${suite_type}/${input_type}
+   cp ${build_dir}/../spec06-run-scripts/${run_type}.sh ${overlay_dir}/${run_type}/${input_type}
 
 fi
 
@@ -175,8 +181,8 @@ fi
 # These files are committed, but can be regenereated with this command
 if [ "$genCommandsFlag" = true ]; then
    # First do a fake run from which will extract the commands
-   log_file="${build_dir}/${suite_type}.${input_type}.fakerun.log"
-   cd $SPEC_DIR; . ./shrc; time runcpu --config=host.cfg --fake --verbose 9  --size ${input_type} --action=onlyrun ${suite_type} > $log_file
+   log_file="${build_dir}/${run_type}.${input_type}.fakerun.log"
+   cd $SPEC_DIR; . ./shrc; time runspec --config=host.cfg --fake --verbose 9  --size ${input_type} --action=onlyrun --rate ${rate_value} ${suite_type} > $log_file
 
    bmarks=(`grep -nE "Running [5-6]+" $log_file | grep -Eo '[0-9]+\.[0-9a-zA-Z_]+'`)
    mkdir -p $build_dir/../commands/${suite_type}
@@ -185,7 +191,7 @@ if [ "$genCommandsFlag" = true ]; then
       echo $bmark
       start_line=`grep -nE "Running $bmark" $log_file | grep -Eo '^[0-9]+'`
       end_line=`grep -nE "Run $bmark" $log_file | grep -Eo '^[0-9]+'`
-      sed "${start_line},${end_line}!d" $log_file | grep '^\.\./run_base' | sed 's/[^ ]* //' > ${build_dir}/../commands/${suite_type}/${bmark}.${input_type}.cmd
+      sed "${start_line},${end_line}!d" $log_file | grep '^\.\./run_base' | sed 's/[^ ]* //' > ${build_dir}/../commands/${bmark}.${input_type}.cmd
    done
 fi
 
