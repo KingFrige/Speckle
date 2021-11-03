@@ -177,24 +177,5 @@ if [ "$compileFlag" = true ]; then
 
 fi
 
-# Produces the .cmd files for a benchmark suite
-# These files are committed, but can be regenereated with this command
-if [ "$genCommandsFlag" = true ]; then
-   # First do a fake run from which will extract the commands
-   log_file="${build_dir}/${run_type}.${input_type}.fakerun.log"
-   cd $SPEC_DIR; . ./shrc; time runspec --config=host.cfg --fake --verbose 9  --size ${input_type} --action=onlyrun --rate ${rate_value} ${suite_type} > $log_file
-
-   bmarks=(`grep -nE "Running [5-6]+" $log_file | grep -Eo '[0-9]+\.[0-9a-zA-Z_]+'`)
-   mkdir -p $build_dir/../commands/${suite_type}
-   echo ${bmarks}
-   for bmark in "${bmarks[@]}"; do
-      echo $bmark
-      start_line=`grep -nE "Running $bmark" $log_file | grep -Eo '^[0-9]+'`
-      end_line=`grep -nE "Run $bmark" $log_file | grep -Eo '^[0-9]+'`
-      sed "${start_line},${end_line}!d" $log_file | grep '^\.\./run_base' | sed 's/[^ ]* //' > ${build_dir}/../commands/${bmark}.${input_type}.cmd
-   done
-fi
-
-
 echo ""
 echo "Done!"

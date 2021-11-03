@@ -1,1 +1,0 @@
--v test.xml xalanc.xsl > test-test.out 2>> test-test.err
