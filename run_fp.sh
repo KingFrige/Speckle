@@ -17,6 +17,9 @@ for b in ${BENCHMARKS[@]}; do
    if [ $b == "483.xalancbmk" ]; then 
       SHORT_EXE=Xalan #WTF SPEC???
    fi
+   if [ $b == "482.sphinx3" ]; then
+      SHORT_EXE=sphinx_livepretend
+   fi
    
    # read the command file
    IFS=$'\n' read -d '' -r -a commands < ${base_dir}/commands/${b}.${INPUT_TYPE}.cmd

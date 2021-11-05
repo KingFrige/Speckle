@@ -55,6 +55,10 @@ do
     shift
 done
 
+if [ "$SUITE_TYPE" = "fp" ]; then
+  fpFlag=true
+fi
+
 if [ "$fpFlag" = true ]; then
   BENCHMARKS=(${FPBENCHMARKS[@]})
 else
@@ -98,6 +102,9 @@ if [ "$compileFlag" = true ]; then
       SHORT_EXE=${b##*.} # cut off the numbers ###.short_exe
       if [ $b == "483.xalancbmk" ]; then 
          SHORT_EXE=Xalan #WTF SPEC???
+      fi
+      if [ $b == "482.sphinx3" ]; then
+         SHORT_EXE=sphinx_livepretend
       fi
       BMK_DIR=$SPEC_DIR/benchspec/CPU2006/$b/run/run_base_${INPUT_TYPE}_${CONFIG}.0000;
       
