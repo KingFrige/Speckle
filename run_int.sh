@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET_RUN="/home/korben/riscv/riscv/riscv-isa-sim/build/spike /home/korben/riscv/riscv/riscv-pk/build/pk "
+TARGET_RUN=""
 INPUT_TYPE=test # THIS MUST BE ON LINE 4 for an external sed command to work!
                 # this allows us to externally set the INPUT_TYPE this script will execute
 
