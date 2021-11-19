@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET_RUN=""
+TARGET_RUN="riscv-hpmcounters-read"
 INPUT_TYPE=test # THIS MUST BE ON LINE 4 for an external sed command to work!
                 # this allows us to externally set the INPUT_TYPE this script will execute
 
@@ -25,7 +25,7 @@ for b in ${BENCHMARKS[@]}; do
    count=0
    for input in "${commands[@]}"; do
       if [[ ${input:0:1} != '#' ]]; then # allow us to comment out lines in the cmd files
-         cmd="${TARGET_RUN} ./${SHORT_EXE} ${input} > ${base_dir}/output/${SHORT_EXE}.${count}.out"
+         cmd="${TARGET_RUN} './${SHORT_EXE} ${input} > ${base_dir}/output/${SHORT_EXE}.${count}.out' > ${base_dir}/output/${SHORT_EXE}.${count}.tma"
          echo "workload=[${cmd}]"
          eval ${cmd}
          ((count++))
