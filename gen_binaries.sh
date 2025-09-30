@@ -34,11 +34,9 @@ function clean_build_data()
 
     if test -d "$BUILD_DIR"; then
       rm -rf ${BUILD_DIR}
-      echo "rm -rf ${BUILD_DIR}"
     fi
     if test -d "$RUN_DIR"; then
       rm -rf ${RUN_DIR}
-      echo "rm -rf ${RUN_DIR}"
     fi
   done
 }
@@ -113,6 +111,7 @@ if [[ "$SUITE_TYPE" == "int" ]]; then
   intFlag=true
 fi
 
+echo ""
 echo "== Speckle Options =="
 echo "  arch   : " $ARCH
 echo "  Config : " ${CONFIG}
